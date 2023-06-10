@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Surveillance Camera</title>
+    <link rel="stylesheet" href="deps/photoswipe/photoswipe.css" />
+    <link rel="stylesheet" href="deps/pico/pico.min.css" />
+  </head>
+  <body>
+    <style>
+      .pswp__custom-caption {
+        background: rgba(75, 150, 75, 0.75);
+        font-size: 16px;
+        color: #fff;
+        width: calc(100% - 32px);
+        max-width: 400px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+      }
+      .pswp__custom-caption a {
+        color: #fff;
+        text-decoration: underline;
+      }
+    </style>
+    <main class="container">
+      <h1>Surveillance Web Interface</h1>
+      <script type="module">
+        const gallery = document.querySelector("#my-gallery");
+
+        const refetchImages = () => {
+          fetch("/door_camera")
+            .then((response) => response.json())
+            .then((data) => {
+              gallery.innerHTML = "";
+
+              for (const img of data) {
+                const aElement = document.createElement("a");
+                aElement.href = `/door_camera/${img}`;
+                aElement.dataset.pswpWidth = 1600;
+                aElement.dataset.pswpHeight = 1200;
+                aElement.target = "_blank";
+
+                const imgElement = document.createElement("img");
+                imgElement.src = `/door_camera/${img}`;
+
+                const dateFromImg = img.slice(0, -4);
+                const [dateStr, timeStr] = dateFromImg.split("_");
+                const [y, m, d] = dateStr.split("-");
+                const [hour, min, sec] = timeStr.split("-");
+                const ISOString = `${y}-${m}-${d}T${hour}:${min}:${sec}.000Z`;
+
+                const date = new Date(ISOString).toLocaleString();
+
+                imgElement.alt = `${date}`;
+                imgElement.width = 200;
+                imgElement.height = 150;
+
+                aElement.appendChild(imgElement);
+                gallery.appendChild(aElement);
+              }
+            });
+        };
+
+        refetchImages();
+        setInterval(refetchImages, 5000);
+
+        import PhotoSwipeLightbox from "./deps/photoswipe/photoswipe-lightbox.esm.js";
+
+        const lightbox = new PhotoSwipeLightbox({
+          gallery: "#my-gallery",
+          children: "a",
+          pswpModule: () => import("./deps/photoswipe/photoswipe.esm.js"),
+        });
+
+        lightbox.on("uiRegister", () => {
+          lightbox.pswp.ui.registerElement({
+            name: "custom-caption",
+            order: 9,
+            isButton: false,
+            appendTo: "root",
+            html: "Caption text",
+            onInit: (el, pswp) => {
+              lightbox.pswp.on("change", () => {
+                const currSlideElement = lightbox.pswp.currSlide.data.element;
+                let captionHTML = "";
+                if (currSlideElement) {
+                  // get caption from alt attribute
+                  captionHTML = currSlideElement
+                    .querySelector("img")
+                    .getAttribute("alt");
+                }
+                el.innerHTML = captionHTML || "";
+              });
+            },
+          });
+        });
+
+        lightbox.init();
+      </script>
+
+      <article>
+        <h2>Door Camera</h2>
+        <div class="pswp-gallery" id="my-gallery"></div>
+      </article>
+    </main>
+  </body>
+</html>
